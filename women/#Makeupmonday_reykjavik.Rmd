@@ -1,0 +1,236 @@
+---
+title: '#MakeOverMonday: ploting the Reykjavik index'
+author: "Mathilde Mousset"
+date: "20 mars 2019"
+output: 
+  html_document: 
+    fig_height: 6
+    fig_width: 8
+    theme: cosmo
+    toc: yes
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(plotly)
+library(extrafont)
+library(readxl)
+library(wesanderson)
+```
+
+```{r my_theme, echo=FALSE}
+
+plot_background_colour <- "white"
+strip_background_colour <- "white"
+grid_colour <- "white"
+
+text_colour  <- "grey10"
+title_colour <- "grey10"
+axis_colour  <- "grey10"
+
+bar_col1 <- "#5F5293"
+bar_col2 <- "#11073B"
+
+my_theme <- theme(
+  # Text in general
+  text = element_text(family = "Roboto Condensed",
+                      colour = text_colour),
+  
+  # Title, subtitle, caption
+  plot.title    = element_text(size = 16,
+                               lineheight = 1.6,
+                               face = "bold",
+                               colour = title_colour),
+  plot.subtitle = element_text(size = 12,
+                               lineheight = 1),
+  plot.caption  = element_text(size = 12),
+  
+  # Facet
+  strip.background = element_rect(fill = strip_background_colour),
+  strip.text = element_text(size = 12,
+                            face = "bold"),
+  
+  
+  # Axes
+  axis.text  = element_text(size = 12,
+                            face = "bold"),
+  #axis.text.x = element_text(vjust = 1),
+  #axis.text.y = element_text(hjust = 1),
+  
+  axis.title = element_text(size = 14,
+                            face = "bold"),
+  axis.line  = element_line(size = 0.5,
+                            colour = axis_colour),
+  
+  # Legend
+  legend.title = element_text(size = 12, 
+                              face = "bold"), 
+  legend.text = element_text(size = 12),
+  legend.background = element_rect(fill = plot_background_colour),
+  
+  # Background
+  panel.background = element_rect(fill = plot_background_colour),
+  plot.background  = element_rect(fill = plot_background_colour),
+  
+  panel.grid.major = element_line(colour = grid_colour,
+                                  size = 0.2,
+                                  linetype = "dashed"),
+  panel.grid.minor = element_line(colour = grid_colour, 
+                                  size = 0.2, 
+                                  linetype = "dashed"),
+  panel.border = element_blank())
+
+```
+
+Tonight, I did a **very** rapid exploration of the Reykjavik index, in the context of the [#MakeupMonday challenge]("http://www.makeovermonday.co.uk/"), which I discovered today. 
+
+This index was developped by [Kantar]("http://www.kantar.com/public/news-events/news/kantar-wpl-reykjavik-index-for-leadership") to quantify how women are perceived as leaders compared to men. 
+
+The index varies between 0 and 100, the maximum representing a country in which people feel that women are as legitimate and competent as men over 20 professions. Needless to say that no country currently holds a 100 score. The index also takes into account the how men and women hold different perceptions of this legitimity.
+
+The data are here provided for the G7 countries, and the index was estimated by surveying over a 10000 person.
+
+
+# The data
+
+```{r}
+data <- read_xlsx("reykjavik_index.xlsx")
+```
+
+Some cleaning
+
+```{r}
+
+G7_average <- data[data$Country == "G7 Average", 2]
+G7_average2 <- data[data$Country == "G7 Average", 2][[1]]
+
+data <- data %>% 
+  rename(reykjavik_index = `Reykjavik Index `) %>% 
+  mutate(Country = fct_reorder(Country, reykjavik_index)) %>% 
+  filter(Country != "G7 Average") %>% 
+  mutate(to_colour = ifelse(reykjavik_index < G7_average2,
+                            "under", "over"))
+
+```
+
+
+# The colourfull barplot
+
+The instinctive first graph, a barplot. I colour the country, because I think it's prettier.
+
+```{r}
+data %>% 
+  ggplot(aes(x = Country, y = reykjavik_index,
+             fill = Country)) +
+  
+  geom_hline(yintercept = G7_average2,
+             size = 1, linetype = "dashed", 
+             colour = "grey50")  +
+  geom_col() +
+  coord_flip() +
+  annotate(geom = "text",
+           label = "G7 average",
+           x = "Italy",
+           y = 80,
+           size = 5,
+           colour = "grey50",
+           #fontface = "bold",
+           family = "Roboto Condensed") +
+  
+  ylim(0, 100) +
+  
+  labs(title = "Reykjavik index per country",
+       subtitle = "Higher values represent less gendered views about leadership",
+       fill = "",
+       x = "",
+       y = "Reykjavik index for leadership",
+       caption = "\nSource: https://data.world/makeovermonday") +
+  my_theme +
+  theme(legend.position = "none") +
+  scale_fill_manual(values = wes_palette("Zissou1", n = 8, type = "continuous"))
+```
+
+# The less colourfull barplot
+
+I don't want to spend a lot of time on these plots, so I will stick with barplots tonight and not go into wild creations. Tonight I believe in simplicity (and lazyness)
+
+```{r}
+data %>% 
+  ggplot(aes(x = Country, y = reykjavik_index,
+             fill = to_colour,
+             #colour = to_colour,
+             label = reykjavik_index)) +
+  
+  geom_hline(yintercept = G7_average2,
+             size = 1, linetype = "dashed", 
+             colour = "grey50")  +
+    geom_col() +
+  geom_text(aes(y = reykjavik_index - 3),
+            colour = "white") +
+  coord_flip() +
+  annotate(geom = "text",
+           label = "G7 average (66)",
+           x = "Italy",
+           y = 75,
+           size = 5,
+           colour = "grey50",
+           #fontface = "bold",
+           family = "Roboto Condensed") +
+  
+  annotate(geom = "text",
+           label = "Countries with higher\nagreement that women\nare as suitable as men\nat leadership positions",
+           x = "France",
+           y = 87,
+           size = 4,
+           colour = bar_col1,
+           #fontface = "bold",
+           family = "Roboto Condensed") +
+  
+  annotate(geom = "text",
+           label = "Countries wich hold\nmore prejudices against\nwomen leaders",
+           x = "Germany",
+           y = 87,
+           size = 4,
+           colour = bar_col2,
+           #fontface = "bold",
+           family = "Roboto Condensed") +
+  
+  geom_hline(yintercept = 100,
+             colour = "black",
+             size = 1) +
+  
+  ylim(0, 100) +
+  
+  labs(title = "Reykjavic Index - What people really think of women leaders",
+       subtitle = "\nIn the best cases there is still more than 1/4 of the road to travel to reach equal confidence in men and women abilities to lead\n",
+       fill = "",
+       x = "",
+       y = "Reykjavik index for leadership",
+       caption = "\nSource: https://data.world/makeovermonday") +
+  my_theme +
+  theme(legend.position = "none",
+        axis.ticks.y = element_blank()) +
+  scale_fill_manual(values = c(bar_col1, bar_col2)) -> plot1
+
+plot1
+```
+
+```{r}
+ggsave(plot1,
+       file = "Reykjavic_index.png",
+       width = 10, height = 6)
+```
+
+
+I want a slighlty interactive version of the plot, so I use the `ggplotly()` function from the `plotly` package.  
+
+
+```{r}
+ggplotly(plot1,
+         tooltip = c("x", "y"))
+```
+
